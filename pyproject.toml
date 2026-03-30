@@ -1,0 +1,35 @@
+[project]
+name = "bitemporalorm"
+version = "0.1.0"
+description = "Bitemporal data storage ORM for PostgreSQL with Polars DataFrames"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "polars>=1.0",
+    "sqlglot>=25.0",
+    "connectorx>=0.3",
+    "asyncpg>=0.30",
+    "psycopg2-binary>=2.9",
+    "typer>=0.12",
+    "rich>=13.0",
+]
+
+[project.scripts]
+bitemporalorm = "bitemporalorm.cli.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bitemporalorm"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]

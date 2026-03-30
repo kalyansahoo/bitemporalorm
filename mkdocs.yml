@@ -1,0 +1,55 @@
+site_name: bitemporalorm
+site_description: Bitemporal data storage ORM for PostgreSQL with Polars DataFrames and Django-style migrations
+repo_url: https://github.com/kalyansahoo/bitemporalorm
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: purple
+      toggle: { icon: material/brightness-7, name: Switch to dark mode }
+    - scheme: slate
+      primary: deep purple
+      accent: purple
+      toggle: { icon: material/brightness-4, name: Switch to light mode }
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+markdown_extensions:
+  - pymdownx.highlight: { anchor_linenums: true }
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - admonition
+  - pymdownx.details
+  - tables
+  - attr_list
+
+extra_css: [stylesheets/extra.css]
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Tutorial: tutorial.md
+  - Concepts:
+    - Overview: concepts/index.md
+    - Bitemporal Data: concepts/bitemporal.md
+    - Entities & Fields: concepts/entities.md
+    - Table Structure: concepts/tables.md
+    - Saving Data: concepts/save.md
+    - Querying: concepts/filter.md
+    - Migrations: concepts/migrations.md
+  - API Reference:
+    - Overview: api/index.md
+    - Entity: api/entity.md
+    - Fields: api/fields.md
+    - Filter & Query: api/filter.md
+    - Migrations: api/migrations.md
+    - Connection: api/connection.md
