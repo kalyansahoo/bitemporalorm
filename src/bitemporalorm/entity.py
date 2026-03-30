@@ -1,25 +1,22 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
-from typing import Any
+from datetime import datetime
+from typing import Any, cast
 
 import polars as pl
 
 from bitemporalorm.fields import (
-    FIELD_TYPES,
     FieldSpec,
-    FieldType,
-    RelationshipType,
     _BitemporalField,
     to_snake_case,
 )
 from bitemporalorm.registry import registry
 
-
 # ---------------------------------------------------------------------------
 # EntityOptions
 # ---------------------------------------------------------------------------
+
 
 class EntityOptions:
     def __init__(
@@ -29,8 +26,8 @@ class EntityOptions:
         parent_entity: type[Entity] | None,
     ) -> None:
         self.table_name = table_name
-        self.fields = fields                     # own fields only
-        self.parent_entity = parent_entity       # direct parent Entity class (or None)
+        self.fields = fields  # own fields only
+        self.parent_entity = parent_entity  # direct parent Entity class (or None)
 
     def all_fields(self) -> dict[str, FieldSpec]:
         """Returns own fields + all inherited fields (flattened)."""
@@ -52,6 +49,7 @@ class EntityOptions:
 # ---------------------------------------------------------------------------
 # EntityMeta
 # ---------------------------------------------------------------------------
+
 
 class EntityMeta(type):
     def __new__(
@@ -81,16 +79,15 @@ class EntityMeta(type):
             own_annotations = {}
 
         # ---- Detect parent Entity ----------------------------------------
-        entity_parents = [
-            b for b in bases
-            if isinstance(b, EntityMeta) and b.__name__ != "Entity"
-        ]
+        entity_parents = [b for b in bases if isinstance(b, EntityMeta) and b.__name__ != "Entity"]
         if len(entity_parents) > 1:
             raise TypeError(
                 f"Entity '{name}' has multiple entity parents "
                 f"({[p.__name__ for p in entity_parents]}). Multiple inheritance is not allowed."
             )
-        parent_entity: type[Entity] | None = entity_parents[0] if entity_parents else None
+        parent_entity: type[Entity] | None = (
+            cast("type[Entity]", entity_parents[0]) if entity_parents else None
+        )
 
         # ---- Collect own field annotations --------------------------------
         fields: dict[str, FieldSpec] = {}
@@ -134,20 +131,21 @@ class EntityMeta(type):
         table_name = getattr(inner_meta, "table_name", None) or to_snake_case(name)
 
         # ---- Attach _meta --------------------------------------------------
-        cls._meta = EntityOptions(
+        cls._meta = EntityOptions(  # type: ignore[attr-defined]
             table_name=table_name,
             fields=fields,
             parent_entity=parent_entity,
         )
 
         # Register
-        registry.register(cls)
+        registry.register(cls)  # type: ignore[arg-type]
         return cls
 
 
 # ---------------------------------------------------------------------------
 # Entity base class
 # ---------------------------------------------------------------------------
+
 
 class Entity(metaclass=EntityMeta):
     """Base class for all bitemporal entities."""
@@ -195,8 +193,8 @@ class Entity(metaclass=EntityMeta):
         pl.DataFrame
             One row per (entity, one-to-many value) combination.
         """
-        from bitemporalorm.query.executor import get_executor
         from bitemporalorm.query.builder import build_filter_sql
+        from bitemporalorm.query.executor import get_executor
 
         executor = get_executor()
         sql, params = build_filter_sql(cls, as_of, list(exprs))

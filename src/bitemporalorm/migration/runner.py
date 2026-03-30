@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from typing import Any
+
 from bitemporalorm.connection.config import ConnectionConfig
 from bitemporalorm.migration.loader import LoadedMigration, MigrationLoader
-
 
 _TRACKING_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS "_bitemporalorm_migrations" (
@@ -19,8 +20,9 @@ class MigrationRunner:
     def __init__(self, config: ConnectionConfig) -> None:
         self._config = config
 
-    def _get_conn(self):
+    def _get_conn(self) -> Any:
         import psycopg2
+
         conn = psycopg2.connect(self._config.psycopg2_dsn)
         conn.autocommit = True
         return conn
@@ -43,7 +45,7 @@ class MigrationRunner:
             conn.close()
 
     def pending_migrations(self, migrations_dir: str) -> list[LoadedMigration]:
-        loader  = MigrationLoader(migrations_dir)
+        loader = MigrationLoader(migrations_dir)
         all_mig = loader.load()
         applied = set(self.applied_migrations())
         return [m for m in all_mig if m.name not in applied]

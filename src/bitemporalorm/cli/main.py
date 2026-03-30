@@ -9,7 +9,9 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 
-app    = typer.Typer(name="bitemporalorm", add_completion=False)
+from bitemporalorm.connection.config import ConnectionConfig
+
+app = typer.Typer(name="bitemporalorm", add_completion=False)
 console = Console()
 
 
@@ -24,11 +26,12 @@ def _load_models(models_module: str) -> None:
 def make_migration(
     name: str = typer.Argument("auto", help="Migration name (snake_case)"),
     migrations_dir: str = typer.Option("migrations", "--migrations-dir", "-d"),
-    models_module: str = typer.Option("models", "--models", "-m",
-                                       help="Python module path to import (e.g. 'myapp.models')"),
+    models_module: str = typer.Option(
+        "models", "--models", "-m", help="Python module path to import (e.g. 'myapp.models')"
+    ),
 ) -> None:
     """Generate a new migration file by diffing the current model state."""
-    from bitemporalorm.migration.differ import SchemaDiffer, MigrationError
+    from bitemporalorm.migration.differ import MigrationError, SchemaDiffer
     from bitemporalorm.migration.loader import MigrationLoader
     from bitemporalorm.migration.state import MigrationState
     from bitemporalorm.migration.writer import MigrationWriter
@@ -45,7 +48,7 @@ def make_migration(
         ops = SchemaDiffer().diff(old_state, new_state)
     except MigrationError as e:
         console.print(f"[red]Migration error:[/red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     if not ops:
         console.print("[green]No changes detected — migration not created.[/green]")
@@ -60,6 +63,7 @@ def make_migration(
     if name == "auto":
         op_name = ops[0].describe().lower()
         import re
+
         name = re.sub(r"[^a-z0-9]+", "_", op_name)[:40].strip("_") or "migration"
 
     writer = MigrationWriter(migrations_dir)
@@ -73,14 +77,14 @@ def make_migration(
 @app.command()
 def migrate(
     migrations_dir: str = typer.Option("migrations", "--migrations-dir", "-d"),
-    models_module: str  = typer.Option("models", "--models", "-m"),
-    plan: bool          = typer.Option(False, "--plan", help="Print SQL without executing"),
-    fake: bool          = typer.Option(False, "--fake", help="Mark as applied without running SQL"),
-    db_url: str         = typer.Option("", "--db-url", envvar="DATABASE_URL",
-                                        help="PostgreSQL DSN (or set DATABASE_URL env var)"),
+    models_module: str = typer.Option("models", "--models", "-m"),
+    plan: bool = typer.Option(False, "--plan", help="Print SQL without executing"),
+    fake: bool = typer.Option(False, "--fake", help="Mark as applied without running SQL"),
+    db_url: str = typer.Option(
+        "", "--db-url", envvar="DATABASE_URL", help="PostgreSQL DSN (or set DATABASE_URL env var)"
+    ),
 ) -> None:
     """Apply pending migrations to the database."""
-    from bitemporalorm.connection.config import ConnectionConfig
     from bitemporalorm.migration.runner import MigrationRunner
 
     _load_models(models_module)
@@ -108,7 +112,7 @@ def migrate(
             console.print("[green]OK[/green]")
         except Exception as e:
             console.print(f"[red]FAILED[/red]\n{e}")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from None
 
 
 def _parse_db_url(db_url: str) -> ConnectionConfig:

@@ -50,6 +50,8 @@ select = ["E", "F", "W", "I", "UP", "B", "RUF"]
 ignore = [
     "E501",   # line too long — handled by formatter
     "B008",   # function call in default arg (common in Typer CLIs)
+    "UP042",  # StrEnum — skip, str+Enum is more portable across Python 3.10 compat
+    "UP046",  # type parameters syntax — PEP 695, avoid risky rewrite of Generic[T]
 ]
 
 [tool.ruff.lint.isort]

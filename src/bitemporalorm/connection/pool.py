@@ -35,13 +35,13 @@ class AsyncPool:
         return self._pool
 
     async def execute(self, sql: str, *args: Any) -> str:
-        return await self._require_pool().execute(sql, *args)
+        return await self._require_pool().execute(sql, *args)  # type: ignore[no-any-return]
 
     async def executemany(self, sql: str, args: list[tuple]) -> None:
         await self._require_pool().executemany(sql, args)
 
     async def fetch(self, sql: str, *args: Any) -> list[asyncpg.Record]:
-        return await self._require_pool().fetch(sql, *args)
+        return await self._require_pool().fetch(sql, *args)  # type: ignore[no-any-return]
 
     async def fetchrow(self, sql: str, *args: Any) -> asyncpg.Record | None:
         return await self._require_pool().fetchrow(sql, *args)

@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import importlib
-import os
-import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -13,8 +10,8 @@ if TYPE_CHECKING:
 @dataclass
 class FieldSnapshot:
     name: str
-    sql_type: str           # e.g. "TEXT", "BIGINT"
-    relationship: str       # "many_to_one", "one_to_one", "one_to_many"
+    sql_type: str  # e.g. "TEXT", "BIGINT"
+    relationship: str  # "many_to_one", "one_to_one", "one_to_many"
     entity_ref: str | None  # referenced entity class name if ENTITY_REF, else None
 
 
@@ -67,8 +64,9 @@ class MigrationState:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _snapshot_entity(entity_cls: type) -> EntitySnapshot:
-    meta = entity_cls._meta
+    meta = entity_cls._meta  # type: ignore[attr-defined]
     fields: dict[str, FieldSnapshot] = {}
 
     # Only own fields (not inherited) for the snapshot

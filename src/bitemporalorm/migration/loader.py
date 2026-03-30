@@ -3,14 +3,14 @@ from __future__ import annotations
 import importlib.util
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from bitemporalorm.migration.ops import Operation
 
 
 @dataclass
 class LoadedMigration:
-    name: str               # e.g. "0001_initial"
+    name: str  # e.g. "0001_initial"
     filepath: str
     dependencies: list[str]
     operations: list[Operation]
@@ -31,17 +31,19 @@ class MigrationLoader:
         for fname in sorted(os.listdir(self.migrations_dir)):
             if not re.match(r"^\d{4}_.*\.py$", fname):
                 continue
-            name     = fname[:-3]  # strip .py
+            name = fname[:-3]  # strip .py
             filepath = os.path.join(self.migrations_dir, fname)
-            mig      = self._load_file(name, filepath)
+            mig = self._load_file(name, filepath)
             raw.append(mig)
 
         return _topological_sort(raw)
 
     def _load_file(self, name: str, filepath: str) -> LoadedMigration:
-        spec   = importlib.util.spec_from_file_location(name, filepath)
+        spec = importlib.util.spec_from_file_location(name, filepath)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Cannot load migration file: {filepath}")
         module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        spec.loader.exec_module(module)  # type: ignore[union-attr]
 
         dependencies: list[str] = getattr(module, "dependencies", [])
         operations: list[Operation] = getattr(module, "operations", [])
@@ -65,9 +67,7 @@ def _topological_sort(migrations: list[LoadedMigration]) -> list[LoadedMigration
     for mig in migrations:
         for dep in mig.dependencies:
             if dep not in by_name:
-                raise ValueError(
-                    f"Migration '{mig.name}' depends on '{dep}' which was not found."
-                )
+                raise ValueError(f"Migration '{mig.name}' depends on '{dep}' which was not found.")
             in_degree[mig.name] += 1
             dependents[dep].append(mig.name)
 

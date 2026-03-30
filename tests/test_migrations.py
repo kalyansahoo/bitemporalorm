@@ -1,9 +1,10 @@
 import os
 import tempfile
+
 import pytest
 
 from bitemporalorm.entity import Entity
-from bitemporalorm.fields import ManyToOneField, OneToManyField, OneToOneField
+from bitemporalorm.fields import ManyToOneField
 from bitemporalorm.migration.differ import MigrationError, SchemaDiffer
 from bitemporalorm.migration.loader import MigrationLoader
 from bitemporalorm.migration.ops import (
@@ -21,10 +22,10 @@ from bitemporalorm.migration.state import (
 from bitemporalorm.migration.writer import MigrationWriter
 from bitemporalorm.registry import registry
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _state_with_entity(name, table, fields=None, parent=None):
     state = MigrationState()
@@ -45,6 +46,7 @@ def _field(name, sql_type="TEXT", rel="many_to_one", entity_ref=None):
 # MigrationState.from_registry
 # ---------------------------------------------------------------------------
 
+
 def test_state_from_registry():
     class Firm(Entity):
         city: ManyToOneField[str]
@@ -61,6 +63,7 @@ def test_state_from_registry():
 # ---------------------------------------------------------------------------
 # SchemaDiffer — new entity
 # ---------------------------------------------------------------------------
+
 
 def test_differ_new_entity():
     old = MigrationState()
@@ -82,7 +85,8 @@ def test_differ_new_entity_with_hierarchy():
     new = MigrationState()
     new.entities["Base"] = EntitySnapshot(name="Base", table_name="base", fields={})
     new.entities["Child"] = EntitySnapshot(
-        name="Child", table_name="child",
+        name="Child",
+        table_name="child",
         fields={"code": _field("code")},
         parent_entity="Base",
     )
@@ -96,6 +100,7 @@ def test_differ_new_entity_with_hierarchy():
 # SchemaDiffer — drop entity
 # ---------------------------------------------------------------------------
 
+
 def test_differ_drop_entity():
     old = _state_with_entity("OldCo", "old_co", {"name": _field("name")})
     new = MigrationState()
@@ -108,12 +113,17 @@ def test_differ_drop_entity():
 # SchemaDiffer — add field
 # ---------------------------------------------------------------------------
 
+
 def test_differ_add_field():
     old = _state_with_entity("Biz", "biz", {"city": _field("city")})
-    new = _state_with_entity("Biz", "biz", {
-        "city":  _field("city"),
-        "phone": _field("phone"),
-    })
+    new = _state_with_entity(
+        "Biz",
+        "biz",
+        {
+            "city": _field("city"),
+            "phone": _field("phone"),
+        },
+    )
 
     ops = SchemaDiffer().diff(old, new)
     new_field_ops = [o for o in ops if isinstance(o, CreateFieldTables)]
@@ -125,6 +135,7 @@ def test_differ_add_field():
 # ---------------------------------------------------------------------------
 # SchemaDiffer — drop field
 # ---------------------------------------------------------------------------
+
 
 def test_differ_drop_field():
     old = _state_with_entity("Biz", "biz", {"city": _field("city"), "phone": _field("phone")})
@@ -139,6 +150,7 @@ def test_differ_drop_field():
 # SchemaDiffer — type change raises MigrationError
 # ---------------------------------------------------------------------------
 
+
 def test_differ_type_change_raises():
     old = _state_with_entity("Co", "co", {"score": _field("score", sql_type="TEXT")})
     new = _state_with_entity("Co", "co", {"score": _field("score", sql_type="BIGINT")})
@@ -150,6 +162,7 @@ def test_differ_type_change_raises():
 # ---------------------------------------------------------------------------
 # SchemaDiffer — parent change raises MigrationError
 # ---------------------------------------------------------------------------
+
 
 def test_differ_parent_change_raises():
     old = _state_with_entity("Child", "child", {}, parent="ParentA")
@@ -165,6 +178,7 @@ def test_differ_parent_change_raises():
 # ---------------------------------------------------------------------------
 # Operations SQL
 # ---------------------------------------------------------------------------
+
 
 def test_create_entity_table_sql():
     op = CreateEntityTable("Company", "company")
@@ -219,6 +233,7 @@ def test_create_hierarchy_table_sql():
 # MigrationWriter + MigrationLoader round-trip
 # ---------------------------------------------------------------------------
 
+
 def test_writer_creates_file():
     with tempfile.TemporaryDirectory() as tmpdir:
         ops = [CreateEntityTable("Company", "company")]
@@ -245,8 +260,8 @@ def test_loader_round_trip():
 def test_loader_topological_sort():
     with tempfile.TemporaryDirectory() as tmpdir:
         writer = MigrationWriter(tmpdir)
-        p1 = writer.write("initial", [CreateEntityTable("A", "a")], [])
-        p2 = writer.write("second", [CreateEntityTable("B", "b")], ["0001_initial"])
+        _p1 = writer.write("initial", [CreateEntityTable("A", "a")], [])
+        _p2 = writer.write("second", [CreateEntityTable("B", "b")], ["0001_initial"])
 
         loader = MigrationLoader(tmpdir)
         loaded = loader.load()
@@ -258,19 +273,24 @@ def test_loader_topological_sort():
 # from_migration_history
 # ---------------------------------------------------------------------------
 
+
 def test_from_migration_history():
     with tempfile.TemporaryDirectory() as tmpdir:
         writer = MigrationWriter(tmpdir)
-        writer.write("initial", [
-            CreateEntityTable("Company", "company"),
-            CreateFieldTables(
-                entity_name="Company",
-                entity_table="company",
-                field_name="city",
-                sql_type="TEXT",
-                relationship="many_to_one",
-            ),
-        ], [])
+        writer.write(
+            "initial",
+            [
+                CreateEntityTable("Company", "company"),
+                CreateFieldTables(
+                    entity_name="Company",
+                    entity_table="company",
+                    field_name="city",
+                    sql_type="TEXT",
+                    relationship="many_to_one",
+                ),
+            ],
+            [],
+        )
 
         state = MigrationState.from_migration_history(tmpdir)
         assert "Company" in state.entities

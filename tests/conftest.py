@@ -1,4 +1,5 @@
 import pytest
+
 from bitemporalorm.registry import registry
 
 

@@ -6,10 +6,9 @@ from bitemporalorm.migration.ops import (
     CreateHierarchyTable,
     DropEntityTable,
     DropFieldTables,
-    DropHierarchyTable,
     Operation,
 )
-from bitemporalorm.migration.state import MigrationState
+from bitemporalorm.migration.state import EntitySnapshot, MigrationState
 
 
 class MigrationError(Exception):
@@ -25,13 +24,11 @@ class SchemaDiffer:
         old_entities = old.entities
         new_entities = new.entities
 
-        all_names = set(old_entities) | set(new_entities)
-
         # Order: create new entities before modifying existing ones,
         # drop old entities after processing existing ones.
-        new_names     = [n for n in new_entities if n not in old_entities]
+        new_names = [n for n in new_entities if n not in old_entities]
         dropped_names = [n for n in old_entities if n not in new_entities]
-        kept_names    = [n for n in new_entities if n in old_entities]
+        kept_names = [n for n in new_entities if n in old_entities]
 
         # ---- New entities ------------------------------------------------
         for name in new_names:
@@ -40,29 +37,35 @@ class SchemaDiffer:
 
             # Hierarchy
             if snap.parent_entity:
-                parent_snap = new_entities.get(snap.parent_entity) or old_entities.get(snap.parent_entity)
+                parent_snap = new_entities.get(snap.parent_entity) or old_entities.get(
+                    snap.parent_entity
+                )
                 if parent_snap is None:
                     raise MigrationError(
                         f"Entity '{name}' references unknown parent '{snap.parent_entity}'."
                     )
-                ops.append(CreateHierarchyTable(
-                    entity_name=name,
-                    entity_table=snap.table_name,
-                    parent_entity_name=snap.parent_entity,
-                    parent_table=parent_snap.table_name,
-                ))
+                ops.append(
+                    CreateHierarchyTable(
+                        entity_name=name,
+                        entity_table=snap.table_name,
+                        parent_entity_name=snap.parent_entity,
+                        parent_table=parent_snap.table_name,
+                    )
+                )
 
             for fname, fsnap in snap.fields.items():
                 ref_table = _resolve_ref_table(fsnap.entity_ref, new_entities, old_entities)
-                ops.append(CreateFieldTables(
-                    entity_name=name,
-                    entity_table=snap.table_name,
-                    field_name=fname,
-                    sql_type=fsnap.sql_type,
-                    relationship=fsnap.relationship,
-                    entity_ref=fsnap.entity_ref,
-                    ref_table=ref_table,
-                ))
+                ops.append(
+                    CreateFieldTables(
+                        entity_name=name,
+                        entity_table=snap.table_name,
+                        field_name=fname,
+                        sql_type=fsnap.sql_type,
+                        relationship=fsnap.relationship,
+                        entity_ref=fsnap.entity_ref,
+                        ref_table=ref_table,
+                    )
+                )
 
         # ---- Kept entities — diff fields ----------------------------------
         for name in kept_names:
@@ -85,24 +88,28 @@ class SchemaDiffer:
                 if fname not in old_fields:
                     fsnap = new_fields[fname]
                     ref_table = _resolve_ref_table(fsnap.entity_ref, new_entities, old_entities)
-                    ops.append(CreateFieldTables(
-                        entity_name=name,
-                        entity_table=new_snap.table_name,
-                        field_name=fname,
-                        sql_type=fsnap.sql_type,
-                        relationship=fsnap.relationship,
-                        entity_ref=fsnap.entity_ref,
-                        ref_table=ref_table,
-                    ))
+                    ops.append(
+                        CreateFieldTables(
+                            entity_name=name,
+                            entity_table=new_snap.table_name,
+                            field_name=fname,
+                            sql_type=fsnap.sql_type,
+                            relationship=fsnap.relationship,
+                            entity_ref=fsnap.entity_ref,
+                            ref_table=ref_table,
+                        )
+                    )
 
             # Dropped fields
             for fname in old_fields:
                 if fname not in new_fields:
-                    ops.append(DropFieldTables(
-                        entity_name=name,
-                        entity_table=new_snap.table_name,
-                        field_name=fname,
-                    ))
+                    ops.append(
+                        DropFieldTables(
+                            entity_name=name,
+                            entity_table=new_snap.table_name,
+                            field_name=fname,
+                        )
+                    )
 
             # Changed field types — forbidden
             for fname in new_fields:
@@ -132,8 +139,8 @@ class SchemaDiffer:
 
 def _resolve_ref_table(
     entity_ref: str | None,
-    new_entities: dict,
-    old_entities: dict,
+    new_entities: dict[str, EntitySnapshot],
+    old_entities: dict[str, EntitySnapshot],
 ) -> str | None:
     if entity_ref is None:
         return None
@@ -143,6 +150,7 @@ def _resolve_ref_table(
     # Fall back: registry
     try:
         from bitemporalorm.registry import registry
+
         cls = registry.get(entity_ref)
         return cls._meta.table_name
     except Exception:

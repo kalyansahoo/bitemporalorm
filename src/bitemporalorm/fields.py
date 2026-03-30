@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from enum import Enum
-from typing import Any, Generic, TypeVar, get_args, get_origin
+from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -10,25 +10,26 @@ T = TypeVar("T")
 # FieldType
 # ---------------------------------------------------------------------------
 
+
 class FieldType(str, Enum):
-    TEXT    = "TEXT"
-    INT     = "BIGINT"
-    FLOAT   = "DOUBLE PRECISION"
+    TEXT = "TEXT"
+    INT = "BIGINT"
+    FLOAT = "DOUBLE PRECISION"
     DATETIME = "TIMESTAMPTZ"
-    ENTITY_REF = "BIGINT"   # FK to another entity table; same SQL type as INT
+    ENTITY_REF = "BIGINT"  # FK to another entity table; same SQL type as INT
 
 
 # Python type → FieldType (primitives only)
 _PY_TYPE_MAP: dict[type, FieldType] = {
-    str:   FieldType.TEXT,
-    int:   FieldType.INT,
+    str: FieldType.TEXT,
+    int: FieldType.INT,
     float: FieldType.FLOAT,
 }
 
 # String annotation names for primitive types
 _STR_TYPE_MAP: dict[str, FieldType] = {
-    "str":   FieldType.TEXT,
-    "int":   FieldType.INT,
+    "str": FieldType.TEXT,
+    "int": FieldType.INT,
     "float": FieldType.FLOAT,
     "datetime": FieldType.DATETIME,
 }
@@ -38,15 +39,17 @@ _STR_TYPE_MAP: dict[str, FieldType] = {
 # Relationship types
 # ---------------------------------------------------------------------------
 
+
 class RelationshipType(str, Enum):
-    MANY_TO_ONE = "many_to_one"   # many entities share the same value (e.g. city)
-    ONE_TO_ONE  = "one_to_one"    # one value per entity at any time
-    ONE_TO_MANY = "one_to_many"   # multiple values per entity → exploded rows
+    MANY_TO_ONE = "many_to_one"  # many entities share the same value (e.g. city)
+    ONE_TO_ONE = "one_to_one"  # one value per entity at any time
+    ONE_TO_MANY = "one_to_many"  # multiple values per entity → exploded rows
 
 
 # ---------------------------------------------------------------------------
 # Field descriptors
 # ---------------------------------------------------------------------------
+
 
 class _BitemporalField(Generic[T]):
     """Base class for all bitemporal field descriptors."""
@@ -69,7 +72,7 @@ class _BitemporalField(Generic[T]):
     # ------------------------------------------------------------------
     # Resolved at class-creation time by EntityMeta
     # ------------------------------------------------------------------
-    name: str = ""          # column / attribute name (set by EntityMeta)
+    name: str = ""  # column / attribute name (set by EntityMeta)
     owner: type | None = None  # owning Entity class
 
     def _resolve_field_type(self, registry_getter: Any) -> tuple[FieldType, str | None]:
@@ -95,6 +98,7 @@ class _BitemporalField(Generic[T]):
 
         # datetime special case (imported at call site)
         import datetime as _dt
+
         if arg is _dt.datetime:
             return FieldType.DATETIME, None
 
@@ -128,6 +132,7 @@ FIELD_TYPES = (ManyToOneField, OneToOneField, OneToManyField)
 # ---------------------------------------------------------------------------
 # FieldSpec — resolved field metadata (set by EntityMeta)
 # ---------------------------------------------------------------------------
+
 
 class FieldSpec:
     """Fully resolved field metadata attached to EntityOptions."""

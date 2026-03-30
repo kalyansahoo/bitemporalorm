@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import polars as pl
 
 if TYPE_CHECKING:
-    from bitemporalorm.entity import Entity
+    from bitemporalorm.entity import Entity, EntityOptions
 
 
 class FilterError(Exception):
@@ -17,6 +17,7 @@ class FilterError(Exception):
 # ---------------------------------------------------------------------------
 # ExprTranslator — pl.Expr → SQL string
 # ---------------------------------------------------------------------------
+
 
 class ExprTranslator:
     """
@@ -52,8 +53,7 @@ class ExprTranslator:
             if col_name == "entity_id":
                 return "e.id"
             raise FilterError(
-                f"Unknown column '{col_name}'. "
-                "Must be a declared field name or 'entity_id'."
+                f"Unknown column '{col_name}'. Must be a declared field name or 'entity_id'."
             )
 
         # ---- Literal ------------------------------------------------------
@@ -78,19 +78,19 @@ class ExprTranslator:
 
         # ---- BinaryExpr ---------------------------------------------------
         if kind == "BinaryExpr":
-            left  = self._visit(payload["left"])
+            left = self._visit(payload["left"])
             right = self._visit(payload["right"])
-            op    = payload["op"]
+            op = payload["op"]
             op_map = {
-                "Eq":    "=",
+                "Eq": "=",
                 "NotEq": "!=",
-                "Lt":    "<",
-                "LtEq":  "<=",
-                "Gt":    ">",
-                "GtEq":  ">=",
-                "And":   "AND",
-                "Or":    "OR",
-                "Plus":  "+",
+                "Lt": "<",
+                "LtEq": "<=",
+                "Gt": ">",
+                "GtEq": ">=",
+                "And": "AND",
+                "Or": "OR",
+                "Plus": "+",
                 "Minus": "-",
             }
             if op not in op_map:
@@ -99,7 +99,9 @@ class ExprTranslator:
 
         # ---- Not ----------------------------------------------------------
         if kind == "Not":
-            inner_node = payload["expr"] if isinstance(payload, dict) and "expr" in payload else payload
+            inner_node = (
+                payload["expr"] if isinstance(payload, dict) and "expr" in payload else payload
+            )
             return f"(NOT {self._visit(inner_node)})"
 
         # ---- Null checks --------------------------------------------------
@@ -117,15 +119,15 @@ class ExprTranslator:
 
         # ---- Between ------------------------------------------------------
         if kind == "Between":
-            col_sql  = self._visit(payload["expr"])
-            low_sql  = self._visit(payload["low"])
+            col_sql = self._visit(payload["expr"])
+            low_sql = self._visit(payload["low"])
             high_sql = self._visit(payload["high"])
             return f"({col_sql} BETWEEN {low_sql} AND {high_sql})"
 
         # ---- Function (str.contains, str.starts_with, etc.) --------------
         if kind == "Function":
             fn_name = payload.get("name", "").upper()
-            args    = [self._visit(a) for a in payload.get("input", payload.get("args", []))]
+            args = [self._visit(a) for a in payload.get("input", payload.get("args", []))]
 
             if fn_name in ("LOWER", "UPPER", "LENGTH"):
                 return f"{fn_name}({args[0]})"
@@ -154,6 +156,7 @@ class ExprTranslator:
 # SQL builder — generates the full SELECT SQL as a string
 # ---------------------------------------------------------------------------
 
+
 def build_filter_sql(
     entity_cls: type[Entity],
     as_of: datetime,
@@ -165,20 +168,20 @@ def build_filter_sql(
     Returns (sql_string, []) — no bind params; as_of is embedded as a literal.
     (connectorx does not support parameterised queries.)
     """
-    meta       = entity_cls._meta
+    meta = entity_cls._meta
     all_fields = meta.all_fields()
-    hierarchy  = meta.hierarchy()
+    hierarchy = meta.hierarchy()
 
     # Safe ISO timestamp literal for PostgreSQL
     if as_of.tzinfo is None:
-        as_of = as_of.replace(tzinfo=timezone.utc)
+        as_of = as_of.replace(tzinfo=UTC)
     ts = f"'{as_of.isoformat()}'::timestamptz"
 
     # alias_map: field_name → JOIN alias (used by ExprTranslator)
     alias_map: dict[str, str] = {fname: f"f_{fname}" for fname in all_fields}
 
     # ---- SELECT -----------------------------------------------------------
-    select_parts: list[str] = [f"e.id AS entity_id"]
+    select_parts: list[str] = ["e.id AS entity_id"]
     for fname in all_fields:
         alias = alias_map[fname]
         select_parts.append(f'"{alias}".value AS {fname}')
@@ -194,14 +197,13 @@ def build_filter_sql(
     if hierarchy:
         hier_table = f"{entity_table}_to_parent_entity"
         sql_parts.append(
-            f'LEFT JOIN "{hier_table}" AS cpe'
-            f' ON cpe.entity_id = e.id AND cpe.as_of @> {ts}'
+            f'LEFT JOIN "{hier_table}" AS cpe ON cpe.entity_id = e.id AND cpe.as_of @> {ts}'
         )
 
     # ---- Field JOINs -------------------------------------------------------
     for fname in all_fields:
-        alias       = alias_map[fname]
-        owner_meta  = _find_field_owner_meta(entity_cls, fname)
+        alias = alias_map[fname]
+        owner_meta = _find_field_owner_meta(entity_cls, fname)
         field_table = f"{owner_meta.table_name}_to_{fname}"
 
         # For child entities, parent fields join on cpe.parent_entity_id
@@ -217,9 +219,9 @@ def build_filter_sql(
 
     # ---- WHERE clause from Polars exprs -----------------------------------
     if exprs:
-        translator  = ExprTranslator(alias_map)
-        conditions  = [translator.translate(e) for e in exprs]
-        where_sql   = " AND ".join(conditions)
+        translator = ExprTranslator(alias_map)
+        conditions = [translator.translate(e) for e in exprs]
+        where_sql = " AND ".join(conditions)
         sql_parts.append(f"WHERE {where_sql}")
 
     return "\n".join(sql_parts), []
@@ -229,12 +231,13 @@ def build_filter_sql(
 # Helper
 # ---------------------------------------------------------------------------
 
-def _find_field_owner_meta(entity_cls: type[Entity], field_name: str):
+
+def _find_field_owner_meta(entity_cls: type[Entity], field_name: str) -> EntityOptions:
     """Walk the MRO to find which entity class declared a given field."""
     from bitemporalorm.entity import EntityMeta
 
     for cls in entity_cls.__mro__:
         if isinstance(cls, EntityMeta) and cls.__name__ != "Entity":
-            if field_name in cls._meta.fields:
-                return cls._meta
+            if field_name in cls._meta.fields:  # type: ignore[attr-defined]
+                return cls._meta  # type: ignore[attr-defined,no-any-return]
     return entity_cls._meta

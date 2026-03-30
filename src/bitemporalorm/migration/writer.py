@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+from typing import Any
 
 from bitemporalorm.migration.ops import Operation
 
@@ -16,7 +17,7 @@ class MigrationWriter:
         """Write the migration file and return its file path."""
         os.makedirs(self.migrations_dir, exist_ok=True)
         number = self._next_number()
-        slug   = re.sub(r"[^a-z0-9_]", "_", name.lower())
+        slug = re.sub(r"[^a-z0-9_]", "_", name.lower())
         filename = f"{number:04d}_{slug}.py"
         filepath = os.path.join(self.migrations_dir, filename)
 
@@ -50,21 +51,18 @@ class MigrationWriter:
     def _next_number(self) -> int:
         if not os.path.isdir(self.migrations_dir):
             return 1
-        existing = [
-            f for f in os.listdir(self.migrations_dir)
-            if re.match(r"^\d{4}_.*\.py$", f)
-        ]
+        existing = [f for f in os.listdir(self.migrations_dir) if re.match(r"^\d{4}_.*\.py$", f)]
         if not existing:
             return 1
         numbers = [int(f[:4]) for f in existing]
         return max(numbers) + 1
 
 
-def _op_to_code(op: Operation) -> str:
+def _op_to_code(op: Any) -> str:
     cls = op.__class__.__name__
     if hasattr(op, "entity_name") and hasattr(op, "table_name") and not hasattr(op, "field_name"):
         if cls in ("CreateEntityTable", "DropEntityTable"):
-            return f'{cls}(entity_name={op.entity_name!r}, table_name={op.table_name!r})'
+            return f"{cls}(entity_name={op.entity_name!r}, table_name={op.table_name!r})"
 
     if cls == "CreateFieldTables":
         parts = [
@@ -78,26 +76,26 @@ def _op_to_code(op: Operation) -> str:
             parts.append(f"entity_ref={op.entity_ref!r}")
         if op.ref_table:
             parts.append(f"ref_table={op.ref_table!r}")
-        return f'{cls}({", ".join(parts)})'
+        return f"{cls}({', '.join(parts)})"
 
     if cls == "DropFieldTables":
         return (
-            f'{cls}(entity_name={op.entity_name!r}, '
-            f'entity_table={op.entity_table!r}, '
-            f'field_name={op.field_name!r})'
+            f"{cls}(entity_name={op.entity_name!r}, "
+            f"entity_table={op.entity_table!r}, "
+            f"field_name={op.field_name!r})"
         )
 
     if cls == "CreateHierarchyTable":
         return (
-            f'{cls}('
-            f'entity_name={op.entity_name!r}, '
-            f'entity_table={op.entity_table!r}, '
-            f'parent_entity_name={op.parent_entity_name!r}, '
-            f'parent_table={op.parent_table!r})'
+            f"{cls}("
+            f"entity_name={op.entity_name!r}, "
+            f"entity_table={op.entity_table!r}, "
+            f"parent_entity_name={op.parent_entity_name!r}, "
+            f"parent_table={op.parent_table!r})"
         )
 
     if cls == "DropHierarchyTable":
-        return f'{cls}(entity_name={op.entity_name!r}, entity_table={op.entity_table!r})'
+        return f"{cls}(entity_name={op.entity_name!r}, entity_table={op.entity_table!r})"
 
     # Fallback
     return repr(op)

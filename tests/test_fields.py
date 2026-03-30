@@ -1,4 +1,5 @@
 import datetime
+
 import pytest
 
 from bitemporalorm.fields import (
@@ -7,20 +8,21 @@ from bitemporalorm.fields import (
     OneToManyField,
     OneToOneField,
     RelationshipType,
-    _BitemporalField,
     to_snake_case,
 )
-
 
 # ---------------------------------------------------------------------------
 # to_snake_case
 # ---------------------------------------------------------------------------
 
+
 def test_to_snake_case_simple():
     assert to_snake_case("BusinessEntity") == "business_entity"
 
+
 def test_to_snake_case_already_snake():
     assert to_snake_case("business_entity") == "business_entity"
+
 
 def test_to_snake_case_acronym():
     assert to_snake_case("HTMLParser") == "html_parser"
@@ -29,6 +31,7 @@ def test_to_snake_case_acronym():
 # ---------------------------------------------------------------------------
 # Field class-getitem syntax
 # ---------------------------------------------------------------------------
+
 
 def test_many_to_one_field_str():
     f = ManyToOneField[str]
@@ -53,6 +56,7 @@ def test_one_to_many_field_float():
 # ---------------------------------------------------------------------------
 # _resolve_field_type
 # ---------------------------------------------------------------------------
+
 
 def _make_field(cls, type_arg):
     f = cls.__new__(cls)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import polars as pl
@@ -42,9 +42,8 @@ class DBExecutor:
         """Execute a read query and return a Polars DataFrame."""
         import connectorx as cx
 
-        df = cx.read_sql(self._config.connectorx_uri, sql, return_type="polars")
-        if hasattr(df, "collect"):
-            df = df.collect()
+        raw = cx.read_sql(self._config.connectorx_uri, sql, return_type="polars")
+        df: pl.DataFrame = raw.collect() if hasattr(raw, "collect") else raw
         return df
 
     # -----------------------------------------------------------------------
@@ -73,30 +72,34 @@ class DBExecutor:
         if "as_of_end" not in df.columns:
             df = df.with_columns(pl.lit(_INFINITY_TS).alias("as_of_end"))
 
-        has_entity_id = "entity_id" in df.columns
-
         # Convert to list of row dicts for processing
         rows = df.to_dicts()
         result_rows: list[dict] = []
 
         for row in rows:
             as_of_start = row["as_of_start"]
-            as_of_end   = row.get("as_of_end", _INFINITY_TS)
-            entity_id   = row.get("entity_id")
+            as_of_end = row.get("as_of_end", _INFINITY_TS)
+            entity_id = row.get("entity_id")
 
             # ---- Insert new entity if needed --------------------------------
             if entity_id is None:
                 rec = await self._pool.fetchrow(
                     f'INSERT INTO "{meta.table_name}" DEFAULT VALUES RETURNING id'
                 )
+                if rec is None:
+                    raise RuntimeError(f"INSERT into '{meta.table_name}' returned no row.")
                 entity_id = rec["id"]
 
             row["entity_id"] = entity_id
 
             # ---- Build as_of range literal ----------------------------------
             as_of_start_str = _to_ts_str(as_of_start)
-            as_of_end_str   = _to_ts_str(as_of_end) if as_of_end not in (None, _INFINITY_TS, "infinity") else "infinity"
-            range_literal   = f"[{as_of_start_str},{as_of_end_str})"
+            as_of_end_str = (
+                _to_ts_str(as_of_end)
+                if as_of_end not in (None, _INFINITY_TS, "infinity")
+                else "infinity"
+            )
+            range_literal = f"[{as_of_start_str},{as_of_end_str})"
 
             # ---- Persist each field present in the row ----------------------
             for fname, fspec in all_fields.items():
@@ -110,7 +113,7 @@ class DBExecutor:
                 # Determine the owning entity's table
                 owner_table = _find_owner_table(entity_cls, fname)
                 audit_table = f"{owner_table}_to_{fname}_audit"
-                mat_table   = f"{owner_table}_to_{fname}"
+                mat_table = f"{owner_table}_to_{fname}"
 
                 # ---- Audit insert ------------------------------------------
                 await self._pool.execute(
@@ -155,7 +158,7 @@ class DBExecutor:
         3. Re-insert split remnants at the boundaries.
         4. Insert the new row.
 
-        For one-to-many we skip step 1–3 (multiple values at same time are OK)
+        For one-to-many we skip step 1-3 (multiple values at same time are OK)
         and just insert.
         """
         if is_one_to_many:
@@ -285,12 +288,12 @@ def get_executor(alias: str = "default") -> DBExecutor:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _to_ts_str(value: Any) -> str:
     """Convert various timestamp types to an ISO string PostgreSQL can parse."""
     if isinstance(value, datetime):
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return value.isoformat()
+        dt = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+        return dt.isoformat()
     return str(value)
 
 
@@ -300,6 +303,6 @@ def _find_owner_table(entity_cls: type[Entity], field_name: str) -> str:
 
     for cls in entity_cls.__mro__:
         if isinstance(cls, EntityMeta) and cls.__name__ != "Entity":
-            if field_name in cls._meta.fields:
-                return cls._meta.table_name
+            if field_name in cls._meta.fields:  # type: ignore[attr-defined]
+                return cls._meta.table_name  # type: ignore[attr-defined,no-any-return]
     return entity_cls._meta.table_name

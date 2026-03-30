@@ -22,8 +22,10 @@ class EntityRegistry:
         try:
             return self._entities[name]
         except KeyError:
-            raise LookupError(f"No entity named '{name}' is registered. "
-                               "Make sure all entity modules are imported before querying.") from None
+            raise LookupError(
+                f"No entity named '{name}' is registered. "
+                "Make sure all entity modules are imported before querying."
+            ) from None
 
     def all(self) -> list[type[Entity]]:
         return list(self._entities.values())

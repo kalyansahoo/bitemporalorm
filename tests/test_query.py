@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import polars as pl
 import pytest
@@ -6,19 +6,18 @@ import pytest
 from bitemporalorm.entity import Entity
 from bitemporalorm.fields import ManyToOneField, OneToManyField, OneToOneField
 from bitemporalorm.query.builder import FilterError, build_filter_sql
-from bitemporalorm.registry import registry
-
 
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
 
-AS_OF = datetime(2025, 6, 1, tzinfo=timezone.utc)
+AS_OF = datetime(2025, 6, 1, tzinfo=UTC)
 
 
 # ---------------------------------------------------------------------------
 # SQL generation — basic
 # ---------------------------------------------------------------------------
+
 
 def test_filter_sql_selects_entity_id():
     class Org(Entity):
@@ -48,8 +47,8 @@ def test_filter_sql_contains_as_of():
 
 def test_filter_sql_multiple_fields():
     class Enterprise(Entity):
-        city:    ManyToOneField[str]
-        phone:   OneToOneField[str]
+        city: ManyToOneField[str]
+        phone: OneToOneField[str]
         manager: OneToManyField[str]
 
     sql, _ = build_filter_sql(Enterprise, AS_OF, [])
@@ -61,6 +60,7 @@ def test_filter_sql_multiple_fields():
 # ---------------------------------------------------------------------------
 # ExprTranslator — equality filter
 # ---------------------------------------------------------------------------
+
 
 def test_filter_expr_equality():
     class Bank(Entity):
@@ -80,13 +80,10 @@ def test_filter_expr_greater_than():
 
 def test_filter_expr_and():
     class Group(Entity):
-        city:  ManyToOneField[str]
+        city: ManyToOneField[str]
         score: ManyToOneField[int]
 
-    sql, _ = build_filter_sql(
-        Group, AS_OF,
-        [(pl.col("city") == "Paris") & (pl.col("score") > 10)]
-    )
+    sql, _ = build_filter_sql(Group, AS_OF, [(pl.col("city") == "Paris") & (pl.col("score") > 10)])
     assert "Paris" in sql
     assert "10" in sql
 
@@ -94,6 +91,7 @@ def test_filter_expr_and():
 # ---------------------------------------------------------------------------
 # Inheritance — SQL includes parent field tables
 # ---------------------------------------------------------------------------
+
 
 def test_filter_sql_includes_parent_fields():
     class BaseOrg(Entity):
@@ -113,6 +111,7 @@ def test_filter_sql_includes_parent_fields():
 # ---------------------------------------------------------------------------
 # Unknown column raises FilterError
 # ---------------------------------------------------------------------------
+
 
 def test_filter_unknown_column_raises():
     class Small(Entity):

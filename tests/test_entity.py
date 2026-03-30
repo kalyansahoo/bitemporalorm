@@ -1,6 +1,6 @@
 import pytest
 
-from bitemporalorm.entity import Entity, EntityOptions
+from bitemporalorm.entity import Entity
 from bitemporalorm.fields import (
     FieldType,
     ManyToOneField,
@@ -10,10 +10,10 @@ from bitemporalorm.fields import (
 )
 from bitemporalorm.registry import registry
 
-
 # ---------------------------------------------------------------------------
 # Basic entity definition
 # ---------------------------------------------------------------------------
+
 
 def test_entity_registers_in_registry():
     class Company(Entity):
@@ -41,8 +41,8 @@ def test_entity_custom_table_name():
 
 def test_entity_fields_collected():
     class Shop(Entity):
-        city:    ManyToOneField[str]
-        phone:   OneToOneField[str]
+        city: ManyToOneField[str]
+        phone: OneToOneField[str]
         manager: OneToManyField[str]
 
     meta = Shop._meta
@@ -51,29 +51,30 @@ def test_entity_fields_collected():
 
 def test_field_spec_relationship():
     class Store(Entity):
-        region:  ManyToOneField[str]
-        code:    OneToOneField[int]
+        region: ManyToOneField[str]
+        code: OneToOneField[int]
         contact: OneToManyField[str]
 
     assert Store._meta.fields["region"].relationship == RelationshipType.MANY_TO_ONE
-    assert Store._meta.fields["code"].relationship   == RelationshipType.ONE_TO_ONE
+    assert Store._meta.fields["code"].relationship == RelationshipType.ONE_TO_ONE
     assert Store._meta.fields["contact"].relationship == RelationshipType.ONE_TO_MANY
 
 
 def test_field_spec_sql_type():
     class Office(Entity):
-        city:     ManyToOneField[str]
+        city: ManyToOneField[str]
         headcount: ManyToOneField[int]
-        revenue:  ManyToOneField[float]
+        revenue: ManyToOneField[float]
 
-    assert Office._meta.fields["city"].sql_type     == FieldType.TEXT
+    assert Office._meta.fields["city"].sql_type == FieldType.TEXT
     assert Office._meta.fields["headcount"].sql_type == FieldType.INT
-    assert Office._meta.fields["revenue"].sql_type   == FieldType.FLOAT
+    assert Office._meta.fields["revenue"].sql_type == FieldType.FLOAT
 
 
 # ---------------------------------------------------------------------------
 # Single inheritance
 # ---------------------------------------------------------------------------
+
 
 def test_single_inheritance():
     class BaseOrg(Entity):
@@ -110,6 +111,7 @@ def test_hierarchy_chain():
 # Multiple inheritance forbidden
 # ---------------------------------------------------------------------------
 
+
 def test_multiple_entity_parents_raises():
     class P1(Entity):
         a: ManyToOneField[str]
@@ -118,6 +120,7 @@ def test_multiple_entity_parents_raises():
         b: ManyToOneField[str]
 
     with pytest.raises(TypeError, match="multiple entity parents"):
+
         class Child(P1, P2):
             c: ManyToOneField[str]
 
@@ -125,6 +128,7 @@ def test_multiple_entity_parents_raises():
 # ---------------------------------------------------------------------------
 # Entity reference field
 # ---------------------------------------------------------------------------
+
 
 def test_entity_ref_field():
     class Country(Entity):
