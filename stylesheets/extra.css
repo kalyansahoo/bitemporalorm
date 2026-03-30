@@ -1,0 +1,43 @@
+/* Feature grid on home page */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.feature-card {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+}
+
+.feature-card h3 {
+  margin-top: 0.3rem;
+  font-size: 1rem;
+}
+
+/* Table schema blocks */
+.table-diagram {
+  background: var(--md-code-bg-color);
+  border-left: 4px solid var(--md-accent-fg-color);
+  padding: 0.8rem 1rem;
+  font-family: var(--md-code-font-family);
+  font-size: 0.85rem;
+  white-space: pre;
+  overflow-x: auto;
+  border-radius: 0 4px 4px 0;
+  margin: 1rem 0;
+}
+
+/* Timeline diagram */
+.timeline {
+  background: var(--md-code-bg-color);
+  padding: 1rem 1.2rem;
+  border-radius: 4px;
+  font-family: var(--md-code-font-family);
+  font-size: 0.83rem;
+  white-space: pre;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
